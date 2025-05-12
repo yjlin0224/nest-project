@@ -1,0 +1,48 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma/client"
+}
+
+generator zod {
+  provider         = "zod-prisma-types"
+  output           = "../src/generated/prisma/zod"
+  useMultipleFiles = true
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  User
+  Admin
+}
+
+model User {
+  /// @zod.custom.omit(["input"])
+  /// @zod.string.cuid2()
+  id               String     @id @default(cuid(2))
+  /// @zod.string.trim().min(4).max(64)
+  username         String     @unique
+  /// @zod.string.email().trim().min(1)
+  email            String?    @unique
+  passwordHash     String
+  /// @zod.string.trim().min(1)
+  displayName      String?
+  /// @zod.string.trim().min(1)
+  profileImagePath String?
+  roles            UserRole[] @default([User])
+  /// @zod.custom.omit(["input"])
+  createdAt        DateTime   @default(now())
+  /// @zod.custom.omit(["input"])
+  updatedAt        DateTime   @updatedAt
+  /// @zod.custom.omit(["input"])
+  deletedAt        DateTime?
+}
