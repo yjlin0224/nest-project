@@ -8,67 +8,80 @@ import {
   Delete,
   Query,
   NotFoundException,
+  HttpCode,
 } from '@nestjs/common'
 import { UsersService } from './users.service'
-import { Prisma } from 'src/generated/prisma/client'
-import { ZodValidationPipe } from 'nestjs-zod'
-import { UserCreateInputSchema, UserUpdateInputSchema } from 'src/generated/prisma/zod'
-import { createFindManyQuerySchema } from 'src/common/schemas/find-many-query.schema'
-import { createIdOnlyParamsSchema } from 'src/common/schemas/id-only-params.schema'
-import { z } from 'zod'
-
-const FindManyQuerySchema = createFindManyQuerySchema(Object.values(Prisma.UserScalarFieldEnum))
-type FindManyQuery = z.infer<typeof FindManyQuerySchema>
-
-const IdOnlyParamsSchema = createIdOnlyParamsSchema(['id'])
-type IdOnlyParams = z.infer<typeof IdOnlyParamsSchema>
+import {
+  UserFindManyQuery,
+  userFindManyQueryPipe,
+  userCreateBodyPipe,
+  userUpdateBodyPipe,
+  UserCreateBody,
+  UserUpdateBody,
+  userParamsPipe,
+  UserParams,
+  userChangePasswordBodyPipe,
+  UserChangePasswordBody,
+} from 'src/users/users.schema'
+import is from '@sindresorhus/is'
+import { RemoveQuery, removeQueryPipe } from 'src/common/schemas/remove-query.schema'
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  create(@Body(new ZodValidationPipe(UserCreateInputSchema)) data: Prisma.UserCreateInput) {
+  @HttpCode(201)
+  async create(@Body(userCreateBodyPipe) data: UserCreateBody) {
     return this.usersService.create(data)
   }
 
   @Get()
-  findMany(@Query(new ZodValidationPipe(FindManyQuerySchema)) query: FindManyQuery) {
+  @HttpCode(200)
+  async findMany(@Query(userFindManyQueryPipe) query: UserFindManyQuery) {
     const { page, cursor, limit, sort, order } = query
     const orderBy = sort ? { [sort]: order } : undefined
-    if (page) {
+    if (is.number(page)) {
       return this.usersService.findManyWithPage({ page, limit, orderBy })
     }
     return this.usersService.findManyWithCursor({ cursor, limit, orderBy })
   }
 
   @Get(':id')
-  async findOne(@Param(new ZodValidationPipe(IdOnlyParamsSchema)) params: IdOnlyParams) {
+  @HttpCode(200)
+  async findOne(@Param(userParamsPipe) params: UserParams) {
     const { id } = params
-    const item = await this.usersService.findOne({ id })
-    if (!item) {
-      throw new NotFoundException()
-    }
+    return this.usersService.findOne({ id })
   }
 
   @Patch(':id')
+  @HttpCode(200)
   async update(
-    @Param(new ZodValidationPipe(IdOnlyParamsSchema)) params: IdOnlyParams,
-    @Body(new ZodValidationPipe(UserUpdateInputSchema)) data: Prisma.UserUpdateInput,
+    @Param(userParamsPipe) params: UserParams,
+    @Body(userUpdateBodyPipe) data: UserUpdateBody,
   ) {
     const { id } = params
-    const item = await this.usersService.update({ where: { id }, data })
-    if (!item) {
-      throw new NotFoundException()
-    }
+    return this.usersService.update({ where: { id }, data })
   }
 
   @Delete(':id')
-  async remove(@Param(new ZodValidationPipe(IdOnlyParamsSchema)) params: IdOnlyParams) {
+  @HttpCode(200)
+  async remove(
+    @Param(userParamsPipe) params: UserParams,
+    @Query(removeQueryPipe) query: RemoveQuery,
+  ) {
+    console.log(query.permanently)
     const { id } = params
-    const item = await this.usersService.remove({ id })
-    if (!item) {
-      throw new NotFoundException()
-    }
+    return this.usersService.remove({ id }, query.permanently)
+  }
+
+  @Post(':id/change-password')
+  @HttpCode(204)
+  async changePassword(
+    @Param(userParamsPipe) params: UserParams,
+    @Body(userChangePasswordBodyPipe) data: UserChangePasswordBody,
+  ) {
+    const { id } = params
+    return this.usersService.changePassword({ where: { id }, data })
   }
 }

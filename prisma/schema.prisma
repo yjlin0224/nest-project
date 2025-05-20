@@ -10,9 +10,8 @@ generator client {
 }
 
 generator zod {
-  provider         = "zod-prisma-types"
-  output           = "../src/generated/prisma/zod"
-  useMultipleFiles = true
+  provider = "zod-prisma-types"
+  output   = "../src/generated/prisma/zod"
 }
 
 datasource db {
@@ -33,6 +32,7 @@ model User {
   username         String     @unique
   /// @zod.string.email().trim().min(1)
   email            String?    @unique
+  /// @zod.custom.omit(["input"])
   passwordHash     String
   /// @zod.string.trim().min(1)
   displayName      String?

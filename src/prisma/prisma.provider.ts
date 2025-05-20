@@ -6,6 +6,16 @@ import { existsExtension, softDeleteExtension, paginationExtension } from './pri
 export class PrismaProvider extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private static initialized = false
 
+  constructor() {
+    super({
+      omit: {
+        user: {
+          passwordHash: true,
+        },
+      },
+    })
+  }
+
   async onModuleInit() {
     if (!PrismaProvider.initialized) {
       PrismaProvider.initialized = true
